@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.log
+*.sqlite3
+*.db
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+.ENV/
+.env/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Pydantic / FastAPI generated files
+*.json
+*.yaml
+
+# Test coverage reports
+htmlcov/
+.tox/
+.nox/
+coverage.*
+.cache
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# VS Code debug log
+.vscode-test/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docker
+*.pid
+*.seed
+docker-compose.override.yml
+
+# dotenv
+.env
+.env.*
+
+# Alembic (optional)
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
