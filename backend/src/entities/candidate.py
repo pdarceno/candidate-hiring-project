@@ -4,7 +4,7 @@ import uuid
 from ..database.core import Base 
 
 class Candidate(Base):
-    __tablename__ = 'candidates'
+    __tablename__ = "candidates"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     full_name = Column(String, nullable=False)
