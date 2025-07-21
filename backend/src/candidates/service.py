@@ -1,11 +1,11 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
-from . import models
+from . import model
 from ..entities.candidate import Candidate
 from ..local_exceptions import CandidateNotFoundError, CandidateAlreadyExistsError
 import logging
 
-def create_candidate(db: Session, candidate: models.CandidateResponse) -> models.CandidateResponse:
+def create_candidate(db: Session, candidate: model.CandidateResponse) -> model.CandidateResponse:
     existing_candidate = db.query(Candidate).filter(Candidate.email == candidate.email).first()
     if existing_candidate:
         logging.warning(f"Candidate with email {candidate.email} already exists.")
@@ -23,7 +23,7 @@ def create_candidate(db: Session, candidate: models.CandidateResponse) -> models
     logging.info(f"Candidate created with ID: {new_candidate.id}")
     return new_candidate
 
-def get_candidate_by_id(db: Session, candidate_id: UUID) -> models.CandidateResponse:
+def get_candidate_by_id(db: Session, candidate_id: UUID) -> model.CandidateResponse:
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         logging.warning(f"Candidate not found with ID: {candidate_id}")
@@ -31,12 +31,12 @@ def get_candidate_by_id(db: Session, candidate_id: UUID) -> models.CandidateResp
     logging.info(f"Successfully retrieved candidate with ID: {candidate_id}")
     return candidate
 
-def get_candidates(db: Session, skip: int = 0, limit: int = 100) -> list[models.CandidateResponse]:
-    candidates = db.query(Candidate).offset(skip).limit(limit).all()
+def get_candidates(db: Session, offset: int = 0, limit: int = 20) -> list[model.CandidateResponse]:
+    candidates = db.query(Candidate).offset(offset).limit(limit).all()
     logging.info(f"Retrieved {len(candidates)} candidates from the database.")
     return candidates
 
-def update_candidate(db: Session, candidate_id: UUID, candidate_data: models.CandidateResponse) -> models.CandidateResponse:
+def update_candidate(db: Session, candidate_id: UUID, candidate_data: model.CandidateResponse) -> model.CandidateResponse:
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         logging.warning(f"Candidate not found with ID: {candidate_id}")

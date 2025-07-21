@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 import jwt
 from jwt import PyJWTError
 from sqlalchemy.orm import Session
-from . import models
+from . import model
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from ..local_exceptions import AuthenticationError
 import logging
@@ -50,24 +50,24 @@ def create_access_token(email: str, expires_delta: timedelta) -> str:
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_token(token: str) -> models.TokenData:
+def verify_token(token: str) -> model.TokenData:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get('id')
-        return models.TokenData(user_id=user_id)
+        return model.TokenData(user_id=user_id)
     except PyJWTError as e:
         logging.warning(f"Token verification failed: {str(e)}")
         raise AuthenticationError()
 
-def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]) -> models.TokenData:
+def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]) -> model.TokenData:
     return verify_token(token)
 
-CurrentUser = Annotated[models.TokenData, Depends(get_current_user)]
+CurrentUser = Annotated[model.TokenData, Depends(get_current_user)]
 
 def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-                                 db: Session) -> models.Token:
+                                 db: Session) -> model.Token:
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise AuthenticationError()
     token = create_access_token(user, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    return models.Token(access_token=token, token_type='bearer')
+    return model.Token(access_token=token, token_type='bearer')

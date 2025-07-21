@@ -1,8 +1,6 @@
 from pydantic import BaseModel, EmailStr
-from uuid import UUID
-from datetime import datetime
 
-
+# These DTOs for the 
 class CandidateResponse(BaseModel):
     email: EmailStr
     full_name: str

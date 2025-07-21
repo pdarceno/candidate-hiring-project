@@ -1,7 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Request
-from starlette import status
-from . import  models
+from . import  model
 from . import service
 from fastapi.security import OAuth2PasswordRequestForm
 from ..database.core import DBSession
@@ -11,7 +10,7 @@ router = APIRouter(
     tags=['Auth']
 )
 
-@router.post("/login", response_model=models.Token)
+@router.post("/login", response_model=model.Token)
 @limiter.limit("10/minute")
 async def login_for_access_token(request: Request,
                                    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
