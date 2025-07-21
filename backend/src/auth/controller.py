@@ -8,7 +8,7 @@ from ..database.core import DBSession
 from ..local_rate_limitter import limiter
 router = APIRouter(
     prefix='/auth',
-    tags=['auth']
+    tags=['Auth']
 )
 
 @router.post("/login", response_model=models.Token)

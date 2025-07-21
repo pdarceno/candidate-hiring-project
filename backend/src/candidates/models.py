@@ -4,7 +4,6 @@ from datetime import datetime
 
 
 class CandidateResponse(BaseModel):
-    id: UUID
     email: EmailStr
     full_name: str
     phone: str | None = None
