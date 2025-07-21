@@ -8,12 +8,14 @@ from ..database.core import DBSession
 from ..local_rate_limitter import limiter
 router = APIRouter(
     prefix='/auth',
-    tags=['auth']
+    tags=['Auth']
 )
 
-@router.post("/token", response_model=models.Token)
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-                                 db: DBSession):
+@router.post("/login", response_model=models.Token)
+@limiter.limit("10/minute")
+async def login_for_access_token(request: Request,
+                                   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+                                   db: DBSession):
     return service.login_for_access_token(form_data, db)
 
 
