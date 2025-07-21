@@ -42,7 +42,7 @@ async def apply_to_job(db: AsyncSession, application_data: model.ApplicationCrea
     except Exception as e:
         logging.error(f"Error applying to job: {e}")
         await db.rollback()
-        raise ApplicationNotFoundError(application_data.candidate_id) from e
+        raise
 
 async def list_applications_for_candidate(db: AsyncSession, candidate_id: UUID) -> list[model.ApplicationResponse]:
     try:
@@ -62,7 +62,7 @@ async def list_applications_for_candidate(db: AsyncSession, candidate_id: UUID) 
             ) for a in applications
         ]
     except Exception as e:
-        logging.error(f"Error listing applications for candidate {candidate_id}: {e}")
+        logging.error(f"Database error listing applications for candidate {candidate_id}: {e}")
         raise
 
 async def update_application_status(db: AsyncSession, application_id: UUID, status_update: model.ApplicationUpdate) -> model.ApplicationResponse:
@@ -83,6 +83,6 @@ async def update_application_status(db: AsyncSession, application_id: UUID, stat
             status=application.status
         )
     except Exception as e:
-        logging.error(f"Error updating application status: {e}")
+        logging.error(f"Database error updating application status: {e}")
         await db.rollback()
-        raise ApplicationNotFoundError(application_id) from e
+        raise
