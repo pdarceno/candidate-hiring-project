@@ -11,6 +11,7 @@ from ..local_exceptions import AuthenticationError
 import logging
 import os
 from dotenv import load_dotenv
+import warnings
 
 load_dotenv()
 
@@ -19,7 +20,10 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/login')
-bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=UserWarning, module="passlib")
+    bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 def verify_password(plain_password: str , hashed_password: str) -> bool:
     return bcrypt_context.verify(plain_password, hashed_password)
@@ -32,7 +36,8 @@ def authenticate_user(email: str, password: str, db: Session) -> str | None:
     TEMP_ADMIN_EMAIL = os.getenv("TEMP_ADMIN_EMAIL")
     TEMP_ADMIN_PASSWORD = os.getenv("TEMP_ADMIN_PASSWORD")
     
-    if email == TEMP_ADMIN_EMAIL and password == TEMP_ADMIN_PASSWORD:
+    if email == TEMP_ADMIN_EMAIL and verify_password(password, get_password_hash(TEMP_ADMIN_PASSWORD)):
+        logging.info(f"Successfully authenticated admin user: {email}")
         return email
     
     logging.warning(f"Failed authentication attempt for email: {email}")
