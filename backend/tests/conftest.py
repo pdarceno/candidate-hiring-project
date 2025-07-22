@@ -97,9 +97,14 @@ async def single_candidate(db_session):
 async def multiple_candidates(db_session):
     """Prepopulate the test database with multiple candidates."""
     candidates = [
-        Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno+fastapi@gmail.com", skills=["Python", "FastAPI"]),
-        Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno+django@gmail.com", skills=["Python", "Django"]),
-        Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno+flask@gmail.com", skills=["Python", "Flask"]),
+        Candidate(
+            id=uuid4(),
+            full_name="Prosy Arceno",
+            phone="123",
+            email=f"prosy.arceno+{i}@gmail.com",
+            skills=["Python", "FastAPI"]
+        )
+        for i in range(100)
     ]
     db_session.add_all(candidates)
     await db_session.commit()
@@ -127,7 +132,7 @@ async def multiple_applications(db_session, single_candidate):
             candidate_id=single_candidate.id,
             job_title="Software Engineer",
             status=ApplicationStatus.APPLIED,
-        ) for _ in range(10)
+        ) for _ in range(100)
     ]
     db_session.add_all(applications)
     await db_session.commit()

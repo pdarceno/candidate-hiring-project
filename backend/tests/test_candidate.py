@@ -21,17 +21,30 @@ async def test_get_single_candidate(async_client: AsyncClient, valid_token: str,
     assert candidate_response.id == candidate_id
 
 @pytest.mark.asyncio
-async def test_get_candidates(async_client: AsyncClient, valid_token: str, multiple_candidates):
+async def test_get_paged_candidates(async_client: AsyncClient, valid_token: str, multiple_candidates):
+    """Test fetching all candidates."""
+    headers = {"Authorization": f"Bearer {valid_token}"}
+
+    response = await async_client.get("/candidates/?offset=0&limit=40", headers=headers)
+    logging.info(f"Response test_get_paged_candidates status: {response.status_code}")
+    logging.info(f"Response test_get_paged_candidates: {response.json()}")
+
+    assert response.status_code == 200
+    candidates = [CandidateResponse(**candidate) for candidate in response.json()]
+    assert len(candidates) == 40
+
+@pytest.mark.asyncio
+async def test_get_all_candidates(async_client: AsyncClient, valid_token: str, multiple_candidates):
     """Test fetching all candidates."""
     headers = {"Authorization": f"Bearer {valid_token}"}
 
     response = await async_client.get("/candidates/", headers=headers)
-    logging.info(f"Response testgetcandidates status: {response.status_code}")
-    logging.info(f"Response testgetcandidates: {response.json()}")
+    logging.info(f"Response test_get_all_candidates status: {response.status_code}")
+    logging.info(f"Response test_get_all_candidates: {response.json()}")
 
     assert response.status_code == 200
     candidates = [CandidateResponse(**candidate) for candidate in response.json()]  # Use DTO for validation
-    assert len(candidates) == len(multiple_candidates)
+    assert len(candidates) == 20
 
 @pytest.mark.asyncio
 async def test_get_candidate_not_found(async_client: AsyncClient, valid_token):

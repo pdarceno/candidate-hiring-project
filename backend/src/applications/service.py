@@ -44,15 +44,20 @@ async def apply_to_job(db: AsyncSession, application_data: model.ApplicationCrea
         await db.rollback()
         raise
 
-async def list_applications_for_candidate(db: AsyncSession, candidate_id: UUID) -> list[model.ApplicationResponse]:
+async def list_applications_for_candidate(db: AsyncSession, candidate_id: UUID, status: ApplicationStatus = ApplicationStatus.APPLIED) -> list[model.ApplicationResponse]:
     try:
         result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
         if not result.scalar_one_or_none():
             raise CandidateNotFoundError(candidate_id)
-        result = await db.execute(select(Application).where(Application.candidate_id == candidate_id))
+
+        query = select(Application).where(Application.candidate_id == candidate_id)
+        if status:
+            query = query.where(Application.status == status)
+
+        result = await db.execute(query)
         applications = result.scalars().all()
-        
-        logging.info(f"Found {len(applications)} applications for candidate ID: {candidate_id}")
+
+        logging.info(f"Found {len(applications)} applications for candidate ID: {candidate_id} with status: {status}")
         return [
             model.ApplicationResponse(
                 id=a.id,
