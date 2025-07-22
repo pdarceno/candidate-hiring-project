@@ -83,7 +83,7 @@ async def update_candidate(db: AsyncSession, candidate_id: UUID, candidate_data:
             logging.warning(f"Candidate not found with ID: {candidate_id}")
             raise CandidateNotFoundError(candidate_id)
 
-        for key, value in candidate_data.dict(exclude_unset=True).items():
+        for key, value in candidate_data.model_dump(exclude_unset=True).items():
             setattr(candidate, key, value)
 
         await db.commit()

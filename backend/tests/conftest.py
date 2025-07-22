@@ -14,23 +14,25 @@ import logging
 import os
 
 
-@pytest.fixture(scope="session")
-def test_engine() -> create_async_engine:
+@pytest_asyncio.fixture(scope="session")
+async def test_engine() -> create_async_engine:
     """Create a test database engine."""
     temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_db_path = temp_db.name
     temp_db.close()
-    
+
     # Use async engine if your app uses async
     engine = create_async_engine(f"sqlite+aiosqlite:///{temp_db_path}", echo=True)
-    
-    yield engine
-    
-    engine.sync_engine.dispose()
+
     try:
-        os.unlink(temp_db_path)
-    except PermissionError:
-        pass
+        yield engine
+    finally:
+        # Properly dispose of the engine asynchronously
+        await engine.dispose()
+        try:
+            os.unlink(temp_db_path)
+        except PermissionError:
+            pass
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
@@ -38,13 +40,20 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     # Create tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     TestingSessionLocal = sessionmaker(
         test_engine, class_=AsyncSession, expire_on_commit=False
     )
-    
+
     async with TestingSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            # Ensure the session is closed properly
+            await session.close()
+            # Drop all tables to clean up the database
+            async with test_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
 
 @pytest.fixture
 def override_get_db(db_session) -> callable:
@@ -77,19 +86,21 @@ async def valid_token(async_client: AsyncClient) -> str:
     return token
 
 @pytest_asyncio.fixture
-async def prepopulate_data(db_session):
-    """Prepopulate the test database with a candidate and application."""
-    # Create a candidate
-    candidate = Candidate(id=uuid4(), full_name="Prosy Arceno", email="prosy.arceno@gmail.com", skills=["Python", "FastAPI"])
+async def single_candidate(db_session):
+    """Prepopulate the test database with a single candidate."""
+    candidate = Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno@gmail.com", skills=["Python", "FastAPI"])
     db_session.add(candidate)
-
-    logging.info(f"Prepopulated candidate: {candidate.full_name} with ID: {candidate.id}")
-
-    # Create an application
-    application = Application(id=uuid4(), candidate_id=candidate.id, job_title="Software Engineer", status=ApplicationStatus.APPLIED)
-    db_session.add(application)
-
-    logging.info(f"Prepopulated application for candidate ID: {application.candidate_id} with job title: {application.job_title}")
-
     await db_session.commit()
-    yield
+    yield candidate  # Yield the single candidate object
+
+@pytest_asyncio.fixture
+async def multiple_candidates(db_session):
+    """Prepopulate the test database with multiple candidates."""
+    candidates = [
+        Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno+fastapi@gmail.com", skills=["Python", "FastAPI"]),
+        Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno+django@gmail.com", skills=["Python", "Django"]),
+        Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno+flask@gmail.com", skills=["Python", "Flask"]),
+    ]
+    db_session.add_all(candidates)
+    await db_session.commit()
+    yield candidates  # Yield the list of candidate objects
