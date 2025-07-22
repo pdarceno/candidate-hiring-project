@@ -42,6 +42,22 @@ async def test_get_multiple_applications(async_client: AsyncClient, valid_token:
     assert len(applications) == len(multiple_applications)
 
 @pytest.mark.asyncio
+async def test_get_filtered_applications(async_client: AsyncClient, valid_token: str, single_candidate, multiple_applications):
+    """Test fetching applications with a specific status."""
+    headers = {"Authorization": f"Bearer {valid_token}"}
+    candidate_id = single_candidate.id  # Use the single candidate ID
+
+    response = await async_client.get(f"/applications/candidate/{candidate_id}?status={ApplicationStatus.APPLIED.value}", headers=headers)
+    logging.info(f"Response status: {response.status_code}")
+    logging.info(f"Response: {response.json()}")
+
+    assert response.status_code == 200
+    applications = [ApplicationResponse(**application) for application in response.json()]
+    assert len(applications) == 100
+    assert applications[0].candidate_id == candidate_id
+    assert applications[0].status == ApplicationStatus.APPLIED
+
+@pytest.mark.asyncio
 async def test_create_application(async_client: AsyncClient, valid_token, single_candidate):
     """Test creating a new application."""
     headers = {"Authorization": f"Bearer {valid_token}"}

@@ -4,6 +4,7 @@ from ..database.core import DBSession
 from . import model
 from . import service
 from ..auth.service import CurrentUser
+from ..entities.application import ApplicationStatus
 
 router = APIRouter(
     prefix="/applications",
@@ -15,8 +16,8 @@ async def apply_to_job(application_data: model.ApplicationCreate, db: DBSession,
     return await service.apply_to_job(db, application_data)
 
 @router.get("/candidate/{candidate_id}", response_model=list[model.ApplicationResponse])
-async def list_applications_for_candidate(candidate_id: UUID, db: DBSession, _: CurrentUser):
-    return await service.list_applications_for_candidate(db, candidate_id)
+async def list_applications_for_candidate(candidate_id: UUID, db: DBSession, _: CurrentUser, status: ApplicationStatus = ApplicationStatus.APPLIED):
+    return await service.list_applications_for_candidate(db, candidate_id, status=status)
 
 @router.patch("/{application_id}", response_model=model.ApplicationResponse)
 async def update_application_status(application_id: UUID, status_update: model.ApplicationUpdate, db: DBSession, _: CurrentUser):
