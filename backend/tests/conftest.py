@@ -91,7 +91,7 @@ async def single_candidate(db_session):
     candidate = Candidate(id=uuid4(), full_name="Prosy Arceno", phone="123", email="prosy.arceno@gmail.com", skills=["Python", "FastAPI"])
     db_session.add(candidate)
     await db_session.commit()
-    yield candidate  # Yield the single candidate object
+    yield candidate
 
 @pytest_asyncio.fixture
 async def multiple_candidates(db_session):
@@ -103,4 +103,32 @@ async def multiple_candidates(db_session):
     ]
     db_session.add_all(candidates)
     await db_session.commit()
-    yield candidates  # Yield the list of candidate objects
+    yield candidates
+
+@pytest_asyncio.fixture
+async def single_application(db_session, single_candidate):
+    """Prepopulate the test database with a single application linked to an actual candidate."""
+    application = Application(
+        id=uuid4(),
+        candidate_id=single_candidate.id,
+        job_title="Software Engineer",
+        status=ApplicationStatus.APPLIED,
+    )
+    db_session.add(application)
+    await db_session.commit()
+    yield application
+
+@pytest_asyncio.fixture
+async def multiple_applications(db_session, single_candidate):
+    """Prepopulate the test database with multiple applications linked to actual candidates."""
+    applications = [
+        Application(
+            id=uuid4(),
+            candidate_id=single_candidate.id,
+            job_title="Software Engineer",
+            status=ApplicationStatus.APPLIED,
+        ) for _ in range(10)
+    ]
+    db_session.add_all(applications)
+    await db_session.commit()
+    yield applications

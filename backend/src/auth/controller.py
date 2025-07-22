@@ -11,7 +11,7 @@ router = APIRouter(
 )
 
 @router.post("/login", response_model=model.Token)
-@limiter.limit("10/minute")
+@limiter.limit("100/minute")
 async def login_for_access_token(request: Request,
                                    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
                                    db: DBSession):

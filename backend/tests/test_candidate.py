@@ -1,5 +1,6 @@
-from uuid import uuid4
 import pytest
+from uuid import uuid4
+from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 from src.candidates.model import CandidateCreate, CandidateUpdate, CandidateResponse
 from src.local_exceptions import CandidateNotFoundError, CandidateAlreadyExistsError
@@ -51,7 +52,7 @@ async def test_create_candidate(async_client: AsyncClient, valid_token):
         email="john.doe@example.com",
         skills=["Python", "FastAPI"]
     )
-    response = await async_client.post("/candidates/", json=candidate_data.model_dump(), headers=headers)
+    response = await async_client.post("/candidates/", json=jsonable_encoder(candidate_data), headers=headers)
     assert response.status_code == 201
     assert "id" in response.json()
 
@@ -65,7 +66,7 @@ async def test_create_candidate_already_exists(async_client: AsyncClient, valid_
         email=single_candidate.email,
         skills=single_candidate.skills
     )
-    response = await async_client.post("/candidates/", json=candidate_data.model_dump(), headers=headers)
+    response = await async_client.post("/candidates/", json=jsonable_encoder(candidate_data), headers=headers)
     assert response.status_code == 400
     assert response.json()["detail"] == CandidateAlreadyExistsError(single_candidate.email).detail
 
@@ -78,7 +79,7 @@ async def test_create_candidate_missing_fields(async_client: AsyncClient, valid_
         full_name="John Doe",
         email="john.doe@example.com",
     )
-    response = await async_client.post("/candidates/", json=candidate_data.model_dump(), headers=headers)
+    response = await async_client.post("/candidates/", json=jsonable_encoder(candidate_data), headers=headers)
     assert response.status_code == 201
     assert "id" in response.json()
 
@@ -92,7 +93,7 @@ async def test_update_candidate(async_client: AsyncClient, valid_token, multiple
         email="john.smith@example.com",
         skills=["Python", "Django"]
     )
-    response = await async_client.put(f"/candidates/{candidate_id}", json=candidate_update_data.model_dump(), headers=headers)
+    response = await async_client.put(f"/candidates/{candidate_id}", json=jsonable_encoder(candidate_update_data), headers=headers)
     assert response.status_code == 200
     assert response.json()["full_name"] == "John Smith"
 
@@ -106,6 +107,6 @@ async def test_update_candidate_not_found(async_client: AsyncClient, valid_token
         email="john.smith@example.com",
         skills=["Python", "Django"]
     )
-    response = await async_client.put(f"/candidates/{non_existent_id}", json=candidate_update_data.model_dump(), headers=headers)
+    response = await async_client.put(f"/candidates/{non_existent_id}", json=jsonable_encoder(candidate_update_data), headers=headers)
     assert response.status_code == 404
     assert response.json()["detail"] == CandidateNotFoundError(non_existent_id).detail

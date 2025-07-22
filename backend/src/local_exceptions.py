@@ -27,5 +27,5 @@ class ApplicationNotFoundError(ApplicationError):
         super().__init__(status_code=404, detail=message)
 
 class ApplicationAlreadyExistsError(ApplicationError):
-    def __init__(self, candidate_id: str, job_id: str):
-        super().__init__(status_code=400, detail=f"Application already exists for candidate {candidate_id} and job {job_id}")
+    def __init__(self, candidate_id: str, job_title: str):
+        super().__init__(status_code=400, detail=f"Application already exists for candidate {candidate_id} and job {job_title}")
