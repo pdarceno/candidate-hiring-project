@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+from src.local_exceptions import AuthenticationError
 
 @pytest.mark.asyncio
 async def test_auth_login(async_client: AsyncClient) -> None:
@@ -28,8 +29,8 @@ async def test_auth_invalid_login(async_client: AsyncClient) -> None:
         "username": "admin@wrongexample.com",
         "password": "admin"
     })
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Could not validate user"
+    assert response.status_code == AuthenticationError().status_code
+    assert response.json()["detail"] == AuthenticationError().detail
 
 @pytest.mark.asyncio
 async def test_auth_login_missing_fields(async_client: AsyncClient) -> None:
@@ -47,7 +48,8 @@ async def test_auth_login_empty_credentials(async_client: AsyncClient) -> None:
         "username": "",
         "password": ""
     })
-    assert response.status_code in [401, 422]  # Unauthorized or validation error
+    assert response.status_code == AuthenticationError().status_code
+    assert response.json()["detail"] == AuthenticationError().detail
 
 @pytest.mark.asyncio
 async def test_auth_token_expiry(async_client: AsyncClient) -> None:
@@ -60,21 +62,24 @@ async def test_auth_token_expiry(async_client: AsyncClient) -> None:
     # Simulate token expiry (e.g., wait or mock expiry)
     expired_token = "expired_token_example"
     headers = {"Authorization": f"Bearer {expired_token}"}
-    response = await async_client.get("/protected-endpoint", headers=headers)
-    assert response.status_code == 404  # Not Found, should be Unauthorized or similar
+    response = await async_client.get("/candidates/", headers=headers)
+    assert response.status_code == AuthenticationError().status_code
+    assert response.json()["detail"] == AuthenticationError().detail
 
 @pytest.mark.asyncio
 async def test_unauthorized_access(async_client: AsyncClient) -> None:
     """Test access to protected endpoint without token."""
-    response = await async_client.get("/protected-endpoint")
-    assert response.status_code == 404  # Not Found
+    response = await async_client.get("/candidates/")
+    assert response.status_code == AuthenticationError().status_code
+    assert response.json()["detail"] == "Not authenticated"
 
 @pytest.mark.asyncio
 async def test_auth_invalid_token(async_client: AsyncClient) -> None:
     """Test access with an invalid token."""
     headers = {"Authorization": "Bearer invalid_token"}
-    response = await async_client.get("/protected-endpoint", headers=headers)
-    assert response.status_code == 404  # Not Found
+    response = await async_client.get("/candidates/", headers=headers)
+    assert response.status_code == AuthenticationError().status_code
+    assert response.json()["detail"] == AuthenticationError().detail
 
 @pytest.mark.asyncio
 async def test_auth_login_rate_limit(async_client: AsyncClient):
