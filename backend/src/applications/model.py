@@ -8,7 +8,7 @@ class ApplicationCreate(BaseModel):
     status: ApplicationStatus
 
 class ApplicationUpdate(BaseModel):
-    status: str
+    status: ApplicationStatus
 
 class ApplicationResponse(BaseModel):
     id: UUID

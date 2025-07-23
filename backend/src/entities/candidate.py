@@ -8,9 +8,9 @@ class Candidate(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     full_name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
     phone = Column(String, nullable=True)
-    skills = Column(JSON, nullable=True)  # Stores list of strings like ["Python", "FastAPI"]
+    skills = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):

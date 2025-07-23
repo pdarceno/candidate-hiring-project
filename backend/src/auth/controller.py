@@ -15,7 +15,7 @@ router = APIRouter(
 async def login_for_access_token(request: Request,
                                    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
                                    db: DBSession):
-    return service.login_for_access_token(form_data, db)
+    return await service.login_for_access_token(form_data, db)
 
 
 

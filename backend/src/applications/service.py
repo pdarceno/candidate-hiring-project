@@ -78,7 +78,7 @@ async def update_application_status(db: AsyncSession, application_id: UUID, stat
             logging.warning(f"Application not found with ID: {application_id}")
             raise ApplicationNotFoundError(application_id)
 
-        application.status = status_update.status
+        application.status = ApplicationStatus(status_update.status)
         await db.commit()
         await db.refresh(application)
         return model.ApplicationResponse(
