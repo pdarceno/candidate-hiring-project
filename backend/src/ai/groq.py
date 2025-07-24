@@ -1,13 +1,13 @@
-from groq import Groq
+from groq import AsyncGroq
 import os
 
-def generate_chat_completion(content: str, model: str = "llama-3.3-70b-versatile", stream: bool = False) -> str:
-    """Generate a chat completion using the Groq API."""
-    client = Groq(
+async def generate_parser(content: str, model: str = "llama-3.3-70b-versatile", stream: bool = False) -> str:
+    """Generate a parser  using the Groq API asynchronously."""
+    client = AsyncGroq(
         api_key=os.environ.get("GROQ_API_KEY", "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"),
     )
 
-    chat_completion = client.chat.completions.create(
+    chat_completion = await client.chat.completions.create(
         messages=[
             {
                 "role": "user",

@@ -12,7 +12,8 @@ from src.candidates.model import CandidateUpdate
 from ..entities.task import Task, TaskType
 from sqlalchemy import select
 import os
-from src.ai.groq import generate_chat_completion
+from src.ai.groq import generate_parser
+from src.ai.parsing import safe_parse_skills, safe_parse_links, validate_parsing_result
 from src.emails.resend import send_enhancement_email
 
 logger = logging.getLogger(__name__)
@@ -81,26 +82,27 @@ class CandidateTaskProcessor:
         logger.info(f"Starting resume parsing for candidate {candidate_id}")
 
         try:
-            # Call Groq API for resume parsing
             resume_content = payload.get("resume_content", "")
             prompt = f"Extract programming skills from this resume: {resume_content}. Return them as a list of format ['skill1', 'skill2', ...]. Do not add any other text aside from the list of skills."
-            skills_response = generate_chat_completion(prompt, model="llama-3.3-70b-versatile", stream=False)
-            programming_skills = eval(skills_response)  # Convert string representation of a list to an actual list
+            skills_response = await generate_parser(prompt, model="llama-3.3-70b-versatile", stream=False)
+            
+            programming_skills = safe_parse_skills(skills_response)
+            
+            if not validate_parsing_result(programming_skills, "skills", min_items=1, max_items=50):
+                logger.warning(f"Unexpected parsing result for candidate {candidate_id}")
 
-            # Update candidate in database
-            async with SessionLocal() as db:
+            async with SessionLocal.begin() as db:
                 result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
                 candidate = result.scalar_one_or_none()
 
                 if candidate:
                     candidate.skills = programming_skills
-                    await db.commit()
 
-                    logger.info(f"Updated skills for candidate {candidate_id}: {candidate.skills}")
+                    logger.info(f"Updated skills for candidate {candidate_id}: {programming_skills}")
 
                     return {
                         "status": "success",
-                        "parsed_skills": candidate.skills
+                        "parsed_skills": programming_skills
                     }
 
             return {"status": "failed", "error": "Candidate not found"}
@@ -109,39 +111,36 @@ class CandidateTaskProcessor:
             logger.error(f"Resume parsing failed: {e}")
             return {"status": "failed", "error": str(e)}
 
+
     async def process_external_enrichment(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Process external enrichment using Groq API"""
+        """Process external enrichment using Groq API - Minimal version"""
         logger.info(f"Starting external enrichment for candidate {candidate_id}")
 
         try:
-            # Call Groq API for enrichment
             enrichment_request = payload.get("enrichment_request", "")
             prompt = f"Create profile links from this candidate profile: {enrichment_request}. Return them as a list of format ['link1', 'link2', ...]. Do not add any other text aside from the list of links."
-            links_response = generate_chat_completion(prompt, model="llama-3.3-70b-versatile", stream=False)
-            profile_links = eval(links_response)  # Convert string representation of a list to an actual list
+            links_response = await generate_parser(prompt, model="llama-3.3-70b-versatile", stream=False)
+            
+            profile_links = safe_parse_links(links_response)
+            
+            logger.info(f"Enriched candidate {candidate_id} with profile links: {profile_links}")
 
-            # Update candidate in database
-            async with SessionLocal() as db:
-                result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
-                candidate = result.scalar_one_or_none()
+            try:
+                html_content = f"<p>Profile links for candidate {candidate_id}: {', '.join(profile_links) if profile_links else 'No links found'}</p>"
+                send_enhancement_email(html_content)
+                logger.info(f"Enhancement email sent for candidate {candidate_id}")
+            except Exception as email_error:
+                logger.error(f"Failed to send enhancement email: {email_error}")
 
-                if candidate:
-                    logger.info(f"Enriched candidate {candidate_id} with profile links: {candidate.profile_links}")
-
-                    html_content = f"<p>Profile links for candidate {candidate_id}: {', '.join(profile_links)}</p>"
-                    send_enhancement_email(html_content)
-
-                    return {
-                        "status": "success",
-                        "profile_links": candidate.profile_links
-                    }
-
-            return {"status": "failed", "error": "Candidate not found"}
+            return {
+                "status": "success",
+                "profile_links": profile_links
+            }
 
         except Exception as e:
             logger.error(f"External enrichment failed: {e}")
             return {"status": "failed", "error": str(e)}
-    
+
     async def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Process a single task based on task_type"""
         task_type = task["task_type"]
