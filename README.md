@@ -2,6 +2,17 @@
 
 A system to manage candidate hiring processes, including resume parsing, profile enrichment.
 
+## How to Run the App (Using Docker with PostgreSQL)
+
+- Install Docker Desktop
+- Navigate to the `backend` directory:
+  ```bash
+  cd backend
+  ```
+- Run `docker-compose build --no-cache`
+- Run `docker-compose up`
+- Run `docker compose down --volumes --remove-orphans` to stop all services
+
 ## Features
 
 - **Authentication**:
@@ -39,13 +50,6 @@ A system to manage candidate hiring processes, including resume parsing, profile
 
 - **Metrics**:
   - Real-time metrics for task processing (e.g., processed count, failed count, queue length).
-
-## How to Run the App (Using Docker with PostgreSQL)
-
-- Install Docker Desktop
-- Run `docker-compose build --no-cache`
-- Run `docker-compose up`
-- Run `docker compose down  --volumes --remove-orphans` to stop all services
 
 ## Environment Variables
 
