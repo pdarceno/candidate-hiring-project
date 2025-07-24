@@ -12,6 +12,8 @@ from src.candidates.model import CandidateUpdate
 from ..entities.task import Task, TaskType
 from sqlalchemy import select
 import os
+from src.ai.groq import generate_chat_completion
+from src.emails.resend import send_enhancement_email
 
 logger = logging.getLogger(__name__)
 
@@ -75,55 +77,70 @@ class CandidateTaskProcessor:
         return False
     
     async def process_resume_parsing(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Mock resume parsing task"""
+        """Process resume parsing using Groq API"""
         logger.info(f"Starting resume parsing for candidate {candidate_id}")
-        
-        # Simulate processing time
-        await asyncio.sleep(2)
-        
-        # Mock AI/external API call
-        parsed_skills = ["Python", "FastAPI", "Redis", "PostgreSQL"]
-        
-        # Update candidate in database
-        async with SessionLocal() as db:
-            result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
-            candidate = result.scalar_one_or_none()
-            
-            if candidate:
-                enhanced_skills = list(set(candidate.skills + parsed_skills)) if candidate.skills else parsed_skills
-                candidate.skills = enhanced_skills
-                await db.commit()
-                
-                logger.info(f"Enhanced skills for candidate {candidate_id}: {enhanced_skills}")
-                
-                return {
-                    "status": "success",
-                    "enhanced_skills": enhanced_skills,
-                }
-        
-        return {"status": "failed", "error": "Candidate not found"}
-    
+
+        try:
+            # Call Groq API for resume parsing
+            resume_content = payload.get("resume_content", "")
+            prompt = f"Extract programming skills from this resume: {resume_content}. Return them as a list of format ['skill1', 'skill2', ...]. Do not add any other text aside from the list of skills."
+            skills_response = generate_chat_completion(prompt, model="llama-3.3-70b-versatile", stream=False)
+            programming_skills = eval(skills_response)  # Convert string representation of a list to an actual list
+
+            # Update candidate in database
+            async with SessionLocal() as db:
+                result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+                candidate = result.scalar_one_or_none()
+
+                if candidate:
+                    candidate.skills = programming_skills
+                    await db.commit()
+
+                    logger.info(f"Updated skills for candidate {candidate_id}: {candidate.skills}")
+
+                    return {
+                        "status": "success",
+                        "parsed_skills": candidate.skills
+                    }
+
+            return {"status": "failed", "error": "Candidate not found"}
+
+        except Exception as e:
+            logger.error(f"Resume parsing failed: {e}")
+            return {"status": "failed", "error": str(e)}
+
     async def process_external_enrichment(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Mock external API enrichment"""
+        """Process external enrichment using Groq API"""
         logger.info(f"Starting external enrichment for candidate {candidate_id}")
-        
-        # Simulate API call delay
-        await asyncio.sleep(3)
-        
-        # Mock LinkedIn/GitHub API enrichment
-        enrichment_data = {
-            "linkedin_profile": f"https://linkedin.com/in/candidate-{candidate_id}",
-            "github_profile": f"https://github.com/candidate-{candidate_id}",
-            "company_history": ["TechCorp", "StartupXYZ"],
-            "certifications": ["AWS Certified", "Google Cloud Professional"]
-        }
-        
-        logger.info(f"Enriched candidate {candidate_id}: {enrichment_data}")
-        
-        return {
-            "status": "success",
-            "enrichment_data": enrichment_data
-        }
+
+        try:
+            # Call Groq API for enrichment
+            enrichment_request = payload.get("enrichment_request", "")
+            prompt = f"Create profile links from this candidate profile: {enrichment_request}. Return them as a list of format ['link1', 'link2', ...]. Do not add any other text aside from the list of links."
+            links_response = generate_chat_completion(prompt, model="llama-3.3-70b-versatile", stream=False)
+            profile_links = eval(links_response)  # Convert string representation of a list to an actual list
+
+            # Update candidate in database
+            async with SessionLocal() as db:
+                result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+                candidate = result.scalar_one_or_none()
+
+                if candidate:
+                    logger.info(f"Enriched candidate {candidate_id} with profile links: {candidate.profile_links}")
+
+                    html_content = f"<p>Profile links for candidate {candidate_id}: {', '.join(profile_links)}</p>"
+                    send_enhancement_email(html_content)
+
+                    return {
+                        "status": "success",
+                        "profile_links": candidate.profile_links
+                    }
+
+            return {"status": "failed", "error": "Candidate not found"}
+
+        except Exception as e:
+            logger.error(f"External enrichment failed: {e}")
+            return {"status": "failed", "error": str(e)}
     
     async def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Process a single task based on task_type"""
@@ -161,8 +178,8 @@ class CandidateTaskProcessor:
         tasks_per_minute = (int(self.redis.get("processed_count") or 0) / uptime) * 60 if uptime > 0 else 0
         
         return {
-            "processed_count": int(self.redis.get("processed_count")) or 0,
-            "failed_count": self.redis.get("failed_count") or 0,
+            "processed_count": int(self.redis.get("processed_count") or 0),
+            "failed_count": int(self.redis.get("failed_count") or 0),
             "uptime_seconds": uptime,
             "tasks_per_minute": round(tasks_per_minute, 2),
             "queue_length": self.redis.llen(self.queue_name),
