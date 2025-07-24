@@ -33,15 +33,6 @@ async def get_candidates(offset: int = 0, limit: int = 20, skill: str | None = N
 async def update_candidate(candidate_id: UUID, candidate: model.CandidateUpdate, db: DBSession = None, _: CurrentUser = None):
     return await service.update_candidate(db, candidate_id, candidate)
 
-@router.post("/{candidate_id}/enqueue-task", status_code=status.HTTP_202_ACCEPTED)
-async def enqueue_candidate_task(candidate_id: UUID, task_type: TaskType, db: DBSession = None, _: CurrentUser = None):
-    return await service.enqueue_task(db, candidate_id, task_type, task_processor)
-
-@router.get("/queue/metrics")
-async def get_queue_metrics(_: CurrentUser):
-    """Get queue processing metrics"""
-    return service.get_queue_metrics(task_processor)
-
 @router.post("/{candidate_id}/resume-parsing", status_code=status.HTTP_202_ACCEPTED)
 async def enqueue_resume_parsing(candidate_id: UUID, file: UploadFile = File(...), db: DBSession = None, _: CurrentUser = None):
     await service.enqueue_resume_parsing_task_with_file(db, candidate_id, file, task_processor)
@@ -51,3 +42,8 @@ async def enqueue_resume_parsing(candidate_id: UUID, file: UploadFile = File(...
 async def enqueue_profile_enrichment(candidate_id: UUID, file: UploadFile = File(...), db: DBSession = None, _: CurrentUser = None):
     await service.enqueue_profile_enrichment_task_with_file(db, candidate_id, file, task_processor)
     return {"message": "Profile enrichment task enqueued successfully."}
+
+@router.get("/queue/metrics")
+async def get_queue_metrics(_: CurrentUser):
+    """Get queue processing metrics"""
+    return service.get_queue_metrics(task_processor)

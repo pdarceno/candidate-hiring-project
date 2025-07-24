@@ -107,37 +107,6 @@ async def update_candidate(db: AsyncSession, candidate_id: UUID, candidate_data:
         await db.rollback()
         raise
 
-async def enqueue_task(db: AsyncSession, candidate_id: UUID, task_type: TaskType, task_processor: CandidateTaskProcessor):
-    try:
-        # Verify candidate exists
-        candidate = await get_candidate_by_id(db, candidate_id)
-
-        # Create task payload
-        payload = {
-            "candidate_email": candidate.email,
-            "candidate_name": candidate.full_name,
-            "current_skills": candidate.skills or []
-        }
-
-        # Enqueue the task
-        success = task_processor.enqueue_task(candidate_id, task_type, payload)
-
-        if not success:
-            raise RuntimeError("Failed to enqueue task")
-
-        return {
-            "message": f"Task '{task_type}' enqueued for candidate {candidate_id}",
-            "candidate_id": candidate_id,
-            "task_type": task_type
-        }
-    except ValueError as e:
-        raise e
-    except RuntimeError as e:
-        raise e
-    except Exception as e:
-        logging.error(f"Error enqueuing task for candidate {candidate_id}: {e}")
-        raise
-
 async def extract_text_from_file(file: UploadFile) -> str:
     """Extract text from an uploaded file (PDF or Word)."""
     if file.content_type == "application/pdf":

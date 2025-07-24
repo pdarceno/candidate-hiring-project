@@ -14,8 +14,8 @@ from sqlalchemy import select
 import os
 from src.ai.groq import generate_parser
 from src.ai.parsing import safe_parse_skills, safe_parse_links, validate_parsing_result
-from src.emails.resend import send_enhancement_email
-from src.emails.templates import generate_enhancement_email
+from src.emails.resend import send_confirmation_email
+from src.emails.templates import generate_resume_email, generate_enhancement_email
 from src.ai.prompts import RESUME_PARSING_PROMPT, EXTERNAL_ENRICHMENT_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,11 @@ class CandidateTaskProcessor:
                 if candidate:
                     # Merge new skills with existing skills
                     existing_skills = candidate.skills or []
-                    candidate.skills = list(set(existing_skills + programming_skills))
+                    merged_skills = list(set(existing_skills + programming_skills))
+                    candidate.skills = merged_skills
+
+                    html_content = generate_resume_email(candidate_id, merged_skills)
+                    send_confirmation_email(html_content)
 
                     logger.info(f"Updated skills for candidate {candidate_id}: {programming_skills}")
 
@@ -131,7 +135,7 @@ class CandidateTaskProcessor:
 
             try:
                 html_content = generate_enhancement_email(candidate_id, profile_links)
-                send_enhancement_email(html_content)
+                send_confirmation_email(html_content)
                 logger.info(f"Enhancement email sent for candidate {candidate_id}")
             except Exception as email_error:
                 logger.error(f"Failed to send enhancement email: {email_error}")

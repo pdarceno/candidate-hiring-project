@@ -5,7 +5,7 @@ resend.api_key = os.environ["RESEND_API_KEY"]
 
 address = os.environ.get("RESEND_EMAIL_ADDRESS")
 
-def send_enhancement_email(html_content: str):
+def send_confirmation_email(html_content: str):
     """Send an email with the enhancement result."""
     params: resend.Emails.SendParams = {
         "from": "Acme <onboarding@resend.dev>",
