@@ -1,7 +1,7 @@
 from groq import AsyncGroq
 import os
 
-async def generate_parser(content: str, model: str = "llama-3.3-70b-versatile", stream: bool = False) -> str:
+async def generate_parser(content: str) -> str:
     """Generate a parser  using the Groq API asynchronously."""
     client = AsyncGroq(
         api_key=os.environ.get("GROQ_API_KEY"),

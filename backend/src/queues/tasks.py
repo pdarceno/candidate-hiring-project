@@ -86,7 +86,7 @@ class CandidateTaskProcessor:
         try:
             resume_content = payload.get("resume_content", "")
             prompt = RESUME_PARSING_PROMPT.format(resume_content=resume_content)
-            skills_response = await generate_parser(prompt, model="llama-3.3-70b-versatile", stream=False)
+            skills_response = await generate_parser(prompt)
             
             programming_skills = safe_parse_skills(skills_response)
             
@@ -123,8 +123,8 @@ class CandidateTaskProcessor:
         try:
             enrichment_request = payload.get("enrichment_request", "")
             prompt = EXTERNAL_ENRICHMENT_PROMPT.format(enrichment_request=enrichment_request)
-            links_response = await generate_parser(prompt, model="llama-3.3-70b-versatile", stream=False)
-            
+            links_response = await generate_parser(prompt)
+
             profile_links = safe_parse_links(links_response)
             
             logger.info(f"Enriched candidate {candidate_id} with profile links: {profile_links}")
