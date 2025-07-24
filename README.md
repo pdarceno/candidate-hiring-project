@@ -90,7 +90,11 @@ A system to manage candidate hiring processes, including resume parsing, profile
 
 - `REDIS_HOST`: Hostname for Redis. Example: `redis`.
 - `REDIS_PORT`: Port for Redis. Example: `6379`.
-- `REDIS_DB`: Redis database index. Example: `0`.
+
+### Cache Configuration
+
+- `REDIS_CACHE_TTL`: Time-to-live (TTL) for individual cache entries in seconds. Example: `1800` (30 minutes).
+- `REDIS_CACHE_LIST_TTL`: Time-to-live (TTL) for list/paginated cache entries in seconds. Example: `600` (10 minutes).
 
 ### Queue Configuration
 
