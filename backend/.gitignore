@@ -52,7 +52,6 @@ dist/
 # Docker
 *.pid
 *.seed
-docker-compose.override.yml
 
 # dotenv
 .env

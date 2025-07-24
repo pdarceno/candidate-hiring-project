@@ -1,13 +1,16 @@
 import asyncio
 from uuid import UUID
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from . import model
 from ..entities.task import TaskType
 from ..entities.candidate import Candidate
 from ..local_exceptions import CandidateNotFoundError, CandidateAlreadyExistsError
-from ..queue.tasks import CandidateTaskProcessor
+from ..queues.tasks import CandidateTaskProcessor
 import logging
+from PyPDF2 import PdfReader
+from docx import Document
 
 async def create_candidate(db: AsyncSession, candidate: model.CandidateCreate) -> model.CandidateResponse:
     result = await db.execute(select(Candidate).where(Candidate.email == candidate.email))
@@ -134,6 +137,39 @@ async def enqueue_task(db: AsyncSession, candidate_id: UUID, task_type: TaskType
     except Exception as e:
         logging.error(f"Error enqueuing task for candidate {candidate_id}: {e}")
         raise
+
+async def extract_text_from_file(file: UploadFile) -> str:
+    """Extract text from an uploaded file (PDF or Word)."""
+    if file.content_type == "application/pdf":
+        pdf_reader = PdfReader(file.file)
+        return "\n".join(page.extract_text() for page in pdf_reader.pages)
+    elif file.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        doc = Document(file.file)
+        return "\n".join(paragraph.text for paragraph in doc.paragraphs)
+    else:
+        raise ValueError("Unsupported file type. Only PDF and Word documents are allowed.")
+
+async def enqueue_resume_parsing_task_with_file(db: AsyncSession, candidate_id: UUID, file: UploadFile, task_processor: CandidateTaskProcessor):
+    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        raise CandidateNotFoundError(candidate_id=candidate_id)
+
+    resume_content = await extract_text_from_file(file)
+    payload = {"resume_content": resume_content}
+    task_processor.enqueue_task(candidate_id, TaskType.RESUME_PARSING, payload)
+    logging.info(f"Enqueued resume parsing task for candidate {candidate_id}")
+
+async def enqueue_profile_enrichment_task_with_file(db: AsyncSession, candidate_id: UUID, file: UploadFile, task_processor: CandidateTaskProcessor):
+    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        raise CandidateNotFoundError(candidate_id=candidate_id)
+
+    enrichment_request = await extract_text_from_file(file)
+    payload = {"enrichment_request": enrichment_request}
+    task_processor.enqueue_task(candidate_id, TaskType.EXTERNAL_ENRICHMENT, payload)
+    logging.info(f"Enqueued profile enrichment task for candidate {candidate_id}")
 
 def get_queue_metrics(task_processor):
     return task_processor.get_metrics()

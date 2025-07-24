@@ -34,4 +34,4 @@ COPY . .
 ENV PYTHONPATH=/app
 
 # Command to start your custom worker
-CMD ["python", "-m", "src.queue.worker"]
+CMD ["python", "-m", "src.queues.worker"]
