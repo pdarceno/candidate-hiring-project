@@ -9,9 +9,18 @@ A system to manage candidate hiring processes, including resume parsing, profile
   ```bash
   cd backend
   ```
-- Run `docker-compose build --no-cache`
-- Run `docker-compose up`
-- Run `docker compose down --volumes --remove-orphans` to stop all services
+- Build the Docker images
+  ```bash
+  docker-compose build --no-cache
+  ```
+- Start the services
+  ```bash
+  docker-compose up
+  ```
+- Stop all services and clean up
+  ```bash
+  docker compose down --volumes --remove-orphans
+  ```
 
 ## Features
 
