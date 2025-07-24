@@ -15,6 +15,8 @@ import os
 from src.ai.groq import generate_parser
 from src.ai.parsing import safe_parse_skills, safe_parse_links, validate_parsing_result
 from src.emails.resend import send_enhancement_email
+from src.emails.templates import generate_enhancement_email
+from src.ai.prompts import RESUME_PARSING_PROMPT, EXTERNAL_ENRICHMENT_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +85,7 @@ class CandidateTaskProcessor:
 
         try:
             resume_content = payload.get("resume_content", "")
-            prompt = f"Extract programming skills from this resume: {resume_content}. Return them as a list of format ['skill1', 'skill2', ...]. Do not add any other text aside from the list of skills."
+            prompt = RESUME_PARSING_PROMPT.format(resume_content=resume_content)
             skills_response = await generate_parser(prompt, model="llama-3.3-70b-versatile", stream=False)
             
             programming_skills = safe_parse_skills(skills_response)
@@ -96,7 +98,9 @@ class CandidateTaskProcessor:
                 candidate = result.scalar_one_or_none()
 
                 if candidate:
-                    candidate.skills = programming_skills
+                    # Merge new skills with existing skills
+                    existing_skills = candidate.skills or []
+                    candidate.skills = list(set(existing_skills + programming_skills))
 
                     logger.info(f"Updated skills for candidate {candidate_id}: {programming_skills}")
 
@@ -118,7 +122,7 @@ class CandidateTaskProcessor:
 
         try:
             enrichment_request = payload.get("enrichment_request", "")
-            prompt = f"Create profile links from this candidate profile: {enrichment_request}. Return them as a list of format ['link1', 'link2', ...]. Do not add any other text aside from the list of links."
+            prompt = EXTERNAL_ENRICHMENT_PROMPT.format(enrichment_request=enrichment_request)
             links_response = await generate_parser(prompt, model="llama-3.3-70b-versatile", stream=False)
             
             profile_links = safe_parse_links(links_response)
@@ -126,7 +130,7 @@ class CandidateTaskProcessor:
             logger.info(f"Enriched candidate {candidate_id} with profile links: {profile_links}")
 
             try:
-                html_content = f"<p>Profile links for candidate {candidate_id}: {', '.join(profile_links) if profile_links else 'No links found'}</p>"
+                html_content = generate_enhancement_email(candidate_id, profile_links)
                 send_enhancement_email(html_content)
                 logger.info(f"Enhancement email sent for candidate {candidate_id}")
             except Exception as email_error:
