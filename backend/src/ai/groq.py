@@ -14,8 +14,8 @@ async def generate_parser(content: str) -> str:
                 "content": content,
             }
         ],
-        model=model,
-        stream=stream,
+        model="llama-3.3-70b-versatile",
+        stream=False,
     )
 
     return chat_completion.choices[0].message.content
