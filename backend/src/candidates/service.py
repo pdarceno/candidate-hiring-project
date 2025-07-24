@@ -1,9 +1,12 @@
+import asyncio
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from . import model
+from ..entities.task import TaskType
 from ..entities.candidate import Candidate
 from ..local_exceptions import CandidateNotFoundError, CandidateAlreadyExistsError
+from ..queue.tasks import CandidateTaskProcessor
 import logging
 
 async def create_candidate(db: AsyncSession, candidate: model.CandidateCreate) -> model.CandidateResponse:
@@ -100,3 +103,37 @@ async def update_candidate(db: AsyncSession, candidate_id: UUID, candidate_data:
         logging.error(f"Error updating candidate: {e}")
         await db.rollback()
         raise
+
+async def enqueue_task(db: AsyncSession, candidate_id: UUID, task_type: TaskType, task_processor: CandidateTaskProcessor):
+    try:
+        # Verify candidate exists
+        candidate = await get_candidate_by_id(db, candidate_id)
+
+        # Create task payload
+        payload = {
+            "candidate_email": candidate.email,
+            "candidate_name": candidate.full_name,
+            "current_skills": candidate.skills or []
+        }
+
+        # Enqueue the task
+        success = task_processor.enqueue_task(candidate_id, task_type, payload)
+
+        if not success:
+            raise RuntimeError("Failed to enqueue task")
+
+        return {
+            "message": f"Task '{task_type}' enqueued for candidate {candidate_id}",
+            "candidate_id": candidate_id,
+            "task_type": task_type
+        }
+    except ValueError as e:
+        raise e
+    except RuntimeError as e:
+        raise e
+    except Exception as e:
+        logging.error(f"Error enqueuing task for candidate {candidate_id}: {e}")
+        raise
+
+def get_queue_metrics(task_processor):
+    return task_processor.get_metrics()
