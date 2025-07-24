@@ -27,7 +27,6 @@ Thumbs.db
 
 # Pydantic / FastAPI generated files
 *.json
-*.yaml
 
 # Test coverage reports
 htmlcov/
