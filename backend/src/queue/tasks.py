@@ -118,7 +118,7 @@ class CandidateTaskProcessor:
             "certifications": ["AWS Certified", "Google Cloud Professional"]
         }
         
-        logger.info(f"Enriched candidate {candidate_id} with external data")
+        logger.info(f"Enriched candidate {candidate_id}: {enrichment_data}")
         
         return {
             "status": "success",
