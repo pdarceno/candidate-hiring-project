@@ -26,8 +26,6 @@ class CandidateTaskProcessor:
         self.max_retries = int(os.getenv("WORKER_MAX_RETRIES"))
         
         # Metrics
-        self.processed_count = 0
-        self.failed_count = 0
         self.start_time = time.time()
 
     def enqueue_task(self, candidate_id: UUID, task_type: TaskType, payload: Dict[str, Any]) -> bool:
@@ -160,11 +158,11 @@ class CandidateTaskProcessor:
     def get_metrics(self) -> Dict[str, Any]:
         """Get processing metrics"""
         uptime = time.time() - self.start_time
-        tasks_per_minute = (self.processed_count / uptime) * 60 if uptime > 0 else 0
+        tasks_per_minute = (int(self.redis.get("processed_count") or 0) / uptime) * 60 if uptime > 0 else 0
         
         return {
-            "processed_count": self.processed_count,
-            "failed_count": self.failed_count,
+            "processed_count": int(self.redis.get("processed_count")) or 0,
+            "failed_count": self.redis.get("failed_count") or 0,
             "uptime_seconds": uptime,
             "tasks_per_minute": round(tasks_per_minute, 2),
             "queue_length": self.redis.llen(self.queue_name),
@@ -200,11 +198,13 @@ class CandidateTaskProcessor:
                             result = await self.process_task(task)
                             
                             if result["status"] == "success":
-                                self.processed_count += 1
+                                # Increment processed_count in Redis
+                                self.redis.incr("processed_count")
+                                
                                 logger.info(f"Successfully processed task for candidate {candidate_id}")
                             else:
                                 # Handle failure
-                                self.failed_count += 1
+                                self.redis.incr("failed_count")
                                 retry_count = task.get("retry_count", 0)
                                 
                                 if retry_count < self.max_retries:
@@ -221,7 +221,7 @@ class CandidateTaskProcessor:
                         self.redis.rpush(self.queue_name, task_json)
                 
                 # Log metrics every minute
-                if self.processed_count % 10 == 0 and self.processed_count > 0:
+                if int(self.redis.get("processed_count") or 0) % 10 == 0:
                     metrics = self.get_metrics()
                     logger.info(f"Worker metrics: {metrics}")
                     
