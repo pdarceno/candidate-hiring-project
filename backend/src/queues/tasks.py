@@ -8,17 +8,20 @@ from redis import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..database.core import SessionLocal
 from ..entities.candidate import Candidate
-from src.candidates.model import CandidateUpdate
+from src.candidates.model import CandidateUpdate, CandidateResponse
 from ..entities.task import Task, TaskType
 from sqlalchemy import select
 import os
 from src.ai.groq import generate_parser
+from ..caching.service import cache_service
 from src.ai.parsing import safe_parse_skills, safe_parse_links, validate_parsing_result
 from src.emails.resend import send_confirmation_email
 from src.emails.templates import generate_resume_email, generate_enhancement_email
 from src.ai.prompts import RESUME_PARSING_PROMPT, EXTERNAL_ENRICHMENT_PROMPT
 
 logger = logging.getLogger(__name__)
+
+redis_cache_ttl = int(os.getenv('REDIS_CACHE_TTL'))
 
 class CandidateTaskProcessor:
     def __init__(self, redis_client: Redis):
@@ -103,10 +106,24 @@ class CandidateTaskProcessor:
                     merged_skills = list(set(existing_skills + programming_skills))
                     candidate.skills = merged_skills
 
+                    # Update cache after database changes
+                    candidate_response = CandidateResponse(
+                        id=candidate.id,
+                        email=candidate.email,
+                        full_name=candidate.full_name,
+                        phone=candidate.phone,
+                        skills=candidate.skills
+                    )
+                    
+                    cache_key = f"candidate:{candidate_id}"
+                    cache_service.delete(cache_key)
+                    cache_service.clear_pattern("candidates:*")
+                    cache_service.set(cache_key, candidate_response.model_dump(), ttl=redis_cache_ttl)
+
                     html_content = generate_resume_email(candidate_id, merged_skills)
                     send_confirmation_email(html_content)
 
-                    logger.info(f"Updated skills for candidate {candidate_id}: {programming_skills}")
+                    logger.info(f"Updated skills and cache for candidate {candidate_id}: {programming_skills}")
 
                     return {
                         "status": "success",
