@@ -45,8 +45,9 @@ async def apply_to_job(db: AsyncSession, application_data: model.ApplicationCrea
             status=new_application.status
         )
         
+        # Use mode='json' to properly serialize enums
         cache_key = f"application:{new_application.id}"
-        cache_service.set(cache_key, application_response.model_dump(), ttl=redis_cache_ttl)
+        cache_service.set(cache_key, application_response.model_dump(mode='json'), ttl=redis_cache_ttl)
         
         cache_service.clear_pattern(f"applications:candidate:{application_data.candidate_id}:*")
         
@@ -87,7 +88,8 @@ async def list_applications_for_candidate(db: AsyncSession, candidate_id: UUID, 
             ) for a in applications
         ]
         
-        applications_data = [app.model_dump() for app in application_responses]
+        # Use mode='json' to properly serialize enums
+        applications_data = [app.model_dump(mode='json') for app in application_responses]
         cache_service.set(cache_key, applications_data, ttl=redis_cache_list_ttl)
 
         logging.info(f"Found and cached {len(applications)} applications for candidate ID: {candidate_id} with status: {status}")
@@ -120,7 +122,8 @@ async def update_application_status(db: AsyncSession, application_id: UUID, stat
         
         cache_service.clear_pattern(f"applications:candidate:{application.candidate_id}:*")
         
-        cache_service.set(cache_key, application_response.model_dump(), ttl=redis_cache_ttl)
+        # Use mode='json' to properly serialize enums
+        cache_service.set(cache_key, application_response.model_dump(mode='json'), ttl=redis_cache_ttl)
         
         logging.info(f"Application status updated and cache invalidated for ID: {application_id}")
         return application_response

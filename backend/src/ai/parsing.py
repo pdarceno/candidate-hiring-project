@@ -107,35 +107,56 @@ def safe_parse_skills(response: str) -> List[str]:
     return cleaned_skills
 
 
-def safe_parse_links(response: str) -> List[str]:
+def safe_parse_links(response: str) -> dict[str, str]:
     """
     Specifically parse profile links from AI response.
     
     Args:
-        response: Raw AI response containing links
+        response: Raw AI response containing links as JSON object
         
     Returns:
-        List of profile links
+        Dictionary of profile links with platform names as keys
     """
-    links = safe_parse_list_response(response)
+    if not response or not isinstance(response, str):
+        return {}
     
-    # Additional validation for links
-    valid_links = []
-    for link in links:
-        link = link.strip()
-        
-        # Basic URL validation
-        if link and ('http' in link.lower() or 'www.' in link.lower() or '.' in link):
-            # Add protocol if missing
-            if not link.startswith(('http://', 'https://')):
-                if link.startswith('www.'):
-                    link = 'https://' + link
-                elif '.' in link and not link.startswith(('ftp://', 'mailto:')):
-                    link = 'https://' + link
+    # Clean the response
+    cleaned_response = response.strip()
+    
+    # Try to find JSON object in response
+    json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+    if json_match:
+        cleaned_response = json_match.group(0)
+    
+    # Try JSON parsing
+    try:
+        parsed_links = json.loads(cleaned_response)
+        if isinstance(parsed_links, dict):
+            # Validate and clean URLs
+            valid_links = {}
+            for platform, url in parsed_links.items():
+                url = str(url).strip()
+                
+                # Basic URL validation
+                if url and ('http' in url.lower() or 'www.' in url.lower() or '.' in url):
+                    # Add protocol if missing
+                    if not url.startswith(('http://', 'https://')):
+                        if url.startswith('www.'):
+                            url = 'https://' + url
+                        elif '.' in url and not url.startswith(('ftp://', 'mailto:')):
+                            url = 'https://' + url
+                    
+                    valid_links[platform.strip()] = url
             
-            valid_links.append(link)
+            return valid_links
+    except json.JSONDecodeError as e:
+        logger.warning(f"JSON parsing failed for links: {e}")
+    except Exception as e:
+        logger.error(f"Error parsing links: {e}")
     
-    return valid_links
+    # Return empty dict if parsing fails
+    logger.warning(f"Could not parse links, returning empty dict: {response[:100]}...")
+    return {}
 
 
 def validate_parsing_result(result: List[str], expected_type: str = "items", min_items: int = 0, max_items: int = 100) -> bool:

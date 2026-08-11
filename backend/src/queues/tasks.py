@@ -112,7 +112,8 @@ class CandidateTaskProcessor:
                         email=candidate.email,
                         full_name=candidate.full_name,
                         phone=candidate.phone,
-                        skills=candidate.skills
+                        skills=candidate.skills,
+                        profile_links=candidate.profile_links
                     )
                     
                     cache_key = f"candidate:{candidate_id}"
@@ -138,7 +139,7 @@ class CandidateTaskProcessor:
 
 
     async def process_external_enrichment(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Process external enrichment using Groq API - Minimal version"""
+        """Process external enrichment using Groq API - Save profile links to database"""
         logger.info(f"Starting external enrichment for candidate {candidate_id}")
 
         try:
@@ -149,6 +150,31 @@ class CandidateTaskProcessor:
             profile_links = safe_parse_links(links_response)
             
             logger.info(f"Enriched candidate {candidate_id} with profile links: {profile_links}")
+
+            # Save profile links to database
+            async with SessionLocal.begin() as db:
+                result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+                candidate = result.scalar_one_or_none()
+
+                if candidate:
+                    candidate.profile_links = profile_links
+
+                    # Update cache after database changes
+                    candidate_response = CandidateResponse(
+                        id=candidate.id,
+                        email=candidate.email,
+                        full_name=candidate.full_name,
+                        phone=candidate.phone,
+                        skills=candidate.skills,
+                        profile_links=candidate.profile_links
+                    )
+                    
+                    cache_key = f"candidate:{candidate_id}"
+                    cache_service.delete(cache_key)
+                    cache_service.clear_pattern("candidates:*")
+                    cache_service.set(cache_key, candidate_response.model_dump(), ttl=redis_cache_ttl)
+
+                    logger.info(f"Updated profile links and cache for candidate {candidate_id}")
 
             try:
                 html_content = generate_enhancement_email(candidate_id, profile_links)

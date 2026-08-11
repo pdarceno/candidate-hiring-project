@@ -28,7 +28,8 @@ async def create_candidate(db: AsyncSession, candidate: model.CandidateCreate) -
             full_name=candidate.full_name,
             email=candidate.email,
             phone=candidate.phone,
-            skills=candidate.skills
+            skills=candidate.skills,
+            profile_links=candidate.profile_links
         )
         db.add(new_candidate)
         await db.commit()
@@ -39,7 +40,8 @@ async def create_candidate(db: AsyncSession, candidate: model.CandidateCreate) -
             email=new_candidate.email,
             full_name=new_candidate.full_name,
             phone=new_candidate.phone,
-            skills=new_candidate.skills
+            skills=new_candidate.skills,
+            profile_links=new_candidate.profile_links
         )
         
         cache_key = f"candidate:{new_candidate.id}"
@@ -76,7 +78,8 @@ async def get_candidate_by_id(db: AsyncSession, candidate_id: UUID) -> model.Can
             email=candidate.email,
             full_name=candidate.full_name,
             phone=candidate.phone,
-            skills=candidate.skills
+            skills=candidate.skills,
+            profile_links=candidate.profile_links
         )
         
         cache_service.set(cache_key, candidate_response.model_dump(), ttl=redis_cache_ttl)
@@ -110,7 +113,8 @@ async def get_candidates(db: AsyncSession, offset: int = 0, limit: int = 20, ski
             email=c.email,
             full_name=c.full_name,
             phone=c.phone,
-            skills=c.skills
+            skills=c.skills,
+            profile_links=c.profile_links
         ) for c in candidates]
         
         candidates_data = [candidate.model_dump() for candidate in candidate_responses]
@@ -141,7 +145,8 @@ async def update_candidate(db: AsyncSession, candidate_id: UUID, candidate_data:
             email=candidate.email,
             full_name=candidate.full_name,
             phone=candidate.phone,
-            skills=candidate.skills
+            skills=candidate.skills,
+            profile_links=candidate.profile_links
         )
         
         cache_key = f"candidate:{candidate_id}"

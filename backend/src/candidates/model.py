@@ -6,11 +6,13 @@ class CandidateCreate(BaseModel):
     full_name: str
     phone: str | None = None
     skills: list[str] | None = None
+    profile_links: dict[str, str] | None = None
 
 class CandidateUpdate(BaseModel):
     full_name: str | None = None
     phone: str | None = None
     skills: list[str] | None = None
+    profile_links: dict[str, str] | None = None
 
 class CandidateResponse(BaseModel):
     id: UUID
@@ -18,3 +20,4 @@ class CandidateResponse(BaseModel):
     full_name: str
     phone: str | None = None
     skills: list[str] | None = None
+    profile_links: dict[str, str] | None = None
